@@ -259,7 +259,7 @@ void projectConstraints(Context* (context)) // Calculation and update of particl
   }
   
 
-// Calculation of constraints due to moving Objects (other particles of context)
+// Calculation of constraints due to moving Objects (with particles of context)
   InteractionConstraint* ic= context -> inter_constraint;
   for (int i = 0; i<(context) -> num_dynamic_constraint;i++){
     InteractionConstraint ic_i=ic[i];
