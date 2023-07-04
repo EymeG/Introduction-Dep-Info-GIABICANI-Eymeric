@@ -33,18 +33,8 @@ If tkinter is not install, it can be installed using:
   sudo apt install python3-tk
   
   
-  
 # COMMAND LINE....  
 gcc -c -fPIC particle.c Vec2.c Constraint.c;  gcc -fPIC -shared particle.o Vec2.o Constraint.o -o libparticle.so
 
 
 
-        print(self.worldToView( (-self.world_x_max, -self.world_y_max) ) )
-        print(self.worldToView( (self.world_x_max, -self.world_y_max) ) )
-        print(self.worldToView( (-self.world_x_max, self.world_y_max) ) )
-        print(self.worldToView( (self.world_x_max, self.world_y_max) ) )
-        
-        print(self.viewToWorld( (0, 0) ))
-        print(self.viewToWorld( (self.width, 0) ))
-        print(self.viewToWorld( (0, self.height) ))
-        print(self.viewToWorld( (self.width, self.height) ))
