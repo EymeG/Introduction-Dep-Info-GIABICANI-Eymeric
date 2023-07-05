@@ -197,7 +197,7 @@ class ParticleUI :
     def mouseCallback(self, event):
         self.addParticle((event.x,event.y), 0.5, 0.5)
     
-    def keyCallback(self, event): # Add a solid at mouse pointer position if any key except enter is pressed (NON FONCTIONNEL)
+    def keyCallback(self, event): # Add a solid at mouse pointer position if any key except enter is pressed (NON FONCTIONNEL, les particules s'ajoutent néanmoins mais décollent instantanément par collision)
         self.addSolid((event.x,event.y),0.6,0.5,0.55,3)
 
     def enterCallback(self, event):
