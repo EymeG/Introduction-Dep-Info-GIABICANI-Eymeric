@@ -32,14 +32,18 @@ class GROUND_COLLIDER(Structure):
 class GROUND_CONSTRAINT(Structure):
     _fields_=[("closestpoint",c_float*2),
               ("norm",c_float*2),
-              ("const_type",c_int),
               ("particle_id",c_int)]
 
 class INTERACTION_CONSTRAINT(Structure):
     _fields_=[("norm",c_float*2),
               ("particle_id",c_int),
               ("contact_id",c_int)]
-    
+
+class SOLID_CONSTRAINT(Structure):
+    _fields_=[("norm",c_float*2),
+              ("particle_id",c_int),
+              ("contact_id",c_int)]
+
 class PARTICLE(Structure):
     _fields_ = [("position", c_float*2),
                 ("next_pos", c_float*2),
@@ -50,17 +54,25 @@ class PARTICLE(Structure):
                 ("draw_id",  c_int),
                 ]
 
-
+class SOLID(Structure):
+    _fields_ = [("solidcomp", POINTER(PARTICLE)),
+                ("distance", c_float),
+                ("partnumb",c_int)]
+    
 class CONTEXT(Structure):
     _fields_ = [("num_particles", c_int),
                 ("capacity_particles", c_int),
-                ("particles", POINTER(PARTICLE) ),
+                ("particles", POINTER(PARTICLE)),
+                ("num_solids",c_int),
+                ("solids",POINTER(SOLID)),
                 ("num_ground_sphere", c_int),
                 ("ground_spheres",POINTER(SPHERE_COLLIDER)),
                 ("num_ground_line",c_int),
                 ("ground_line",POINTER(GROUND_COLLIDER)),
                 ("num_ground_constraint",c_int),
-                ("ground_constraint", POINTER(GROUND_CONSTRAINT))]
+                ("ground_constraint", POINTER(GROUND_CONSTRAINT)),
+                ("num_solid_constraint",c_int),
+                ("solid_constraint", POINTER(SOLID_CONSTRAINT))]
 
 # ("pos", c_float*2) => fixed size array of two float
 
@@ -70,6 +82,7 @@ c_lib.initializeContext.restype = POINTER(CONTEXT) # return type of initializeCo
 c_lib.getParticle.restype = PARTICLE # return type of getParticle is Particle
 c_lib.getGroundSphereCollider.restype = SPHERE_COLLIDER # return type of getGroundSphereCollider is SphereCollider
 c_lib.getGroundLine.restype = GROUND_COLLIDER # return type of getGroundLine is GroundCollider
+c_lib.getSolid.restype= SOLID
 
 # WARNING : python parameter should be explicitly converted to proper c_type of not integer.
 # If we already have a c_type (including the one deriving from Structure above)
@@ -119,6 +132,7 @@ class ParticleUI :
                                               *self.worldToView( (line.leftcoord[0],line.leftcoord[1]) ),
                                               fill="black",width=4)
             c_lib.setDrawIdGroundCollider(self.context, i, draw_id) 
+
         # Initialize Mouse and Key events
         self.canvas.bind("<Button-1>", lambda event: self.mouseCallback(event))
         self.window.bind("<Key>", lambda event: self.keyCallback(event)) # bind all key
@@ -145,6 +159,9 @@ class ParticleUI :
                                *self.worldToView( (sphere.position[0]-sphere.radius,sphere.position[1]-sphere.radius) ),
                                *self.worldToView( (sphere.position[0]+sphere.radius,sphere.position[1]+sphere.radius) ) )
             
+
+            
+            
         
         
         self.window.update()
@@ -169,14 +186,20 @@ class ParticleUI :
                         c_float(x_world), c_float(y_world), 
                         c_float(radius), c_float(mass),
                         draw_id)
+    
+    def addSolid(self, screen_pos, radius, mass, distance, partnumb):
+        (x_world,y_world)= self.viewToWorld(screen_pos)
+        draw_id=self.canvas.create_oval(0,0,0,0, fill="orange")
+        c_lib.addSolid(self.context,c_float(x_world), c_float(y_world),c_float(radius), c_float(mass),draw_id)
 
     # All mouse and key callbacks
 
     def mouseCallback(self, event):
         self.addParticle((event.x,event.y), 0.5, 0.5)
     
-    def keyCallback(self, event):
-        print(repr(event.char))
+    def keyCallback(self, event): # Add a solid at mouse pointer position if any key except enter is pressed (NON FONCTIONNEL)
+        self.addSolid((event.x,event.y),0.6,0.5,0.55,3)
+
     def enterCallback(self, event):
         self.window.destroy()
 

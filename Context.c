@@ -11,10 +11,14 @@
 Context* initializeContext(int capacity)
 {
   Context* (context) = malloc(sizeof(Context));
+
   (context) -> num_particles = 0;
   (context) -> capacity_particles = capacity;
   (context) -> particles = malloc(capacity*sizeof(Particle));
   memset((context) -> particles,0,capacity*sizeof(Particle));
+
+  (context) -> num_solids=0;
+  (context) -> solids = malloc(capacity*sizeof(Solid));
 
   (context) -> num_ground_sphere = 5;
   (context) -> ground_spheres = malloc(((context) -> num_ground_sphere)*sizeof(SphereCollider));
@@ -37,8 +41,8 @@ Context* initializeContext(int capacity)
 
   (context) -> num_ground_line=1;
   (context) ->  ground_line = malloc(((context) -> num_ground_line)*sizeof(GroundCollider));
-  Vec2 b0= {-16.0f, -3.0f};
-  Vec2 b1={-16.0f,-3.0f};
+  Vec2 b0= {-16.0f, -2.0f};
+  Vec2 b1={-16.0f,-2.0f};
   Vec2 b2={0.0f,1.0f};
   (context) -> ground_line[0].leftcoord=b0;
   (context) -> ground_line[0].rightcoord=b1;
@@ -49,6 +53,9 @@ Context* initializeContext(int capacity)
 
   (context) -> num_dynamic_constraint=0;
   (context) -> inter_constraint=malloc((context -> capacity_particles)*(context -> capacity_particles)*sizeof(InteractionConstraint));
+
+  (context) -> num_solid_constraint=0;
+  (context) -> solid_constraint=malloc((context -> capacity_particles)*(context -> capacity_particles)*sizeof(SolidConstraint));
   
   return (context);
 }
@@ -65,7 +72,24 @@ void addParticle(Context* (context), float x, float y, float radius, float mass,
     (context) -> particles[(context) -> num_particles].inv_mass = 1.0F/mass;
     (context) -> particles[(context) -> num_particles].radius = radius;
     (context) -> particles[(context) -> num_particles].draw_id = draw_id;
+    (context) -> particles[(context) -> num_particles].solid_id = -1;
     (context) -> num_particles += 1;
+}
+
+//----------------------------------------------------------------
+
+void addSolid(Context* context, float x, float y, float radius, float mass, int partnumb, int distance, int draw_id){
+  assert((context) -> num_particles<(context) -> capacity_particles);
+  context -> solids[context -> num_solids].solidcomp = malloc(partnumb*sizeof(int));
+  context -> solids[context -> num_solids].distance = distance;
+  context -> solids[context -> num_solids].partnumb = partnumb;
+  
+  for(int i = 0; i < partnumb; i++){
+    context -> solids[context -> num_solids].solidcomp[i] = context -> num_particles;
+    addParticle(context, x+2*radius*i, y, radius, mass, draw_id);
+    context -> particles[(context -> num_particles)-1].solid_id = context -> num_solids;
+    context -> num_solids= context -> num_solids+1;
+  }
 }
 
 //----------------------------------------------------------------
@@ -91,6 +115,13 @@ GroundCollider getGroundLine(Context* (context), int id)
 
 //----------------------------------------------------------------
 
+Solid getSolid(Context* context, int id)
+{
+  return (context) -> solids[id];
+}
+
+//----------------------------------------------------------------
+
 void setDrawId(Context* (context), int sphere_id, int draw_id)
 {
   (context) -> particles[sphere_id].draw_id = draw_id;
@@ -111,7 +142,6 @@ void setDrawIdGroundCollider(Context* (context), int line_id, int draw_id)
 }
 
 //----------------------------------------------------------------
-
 
 void checkContactWithPlane(Context* context,int particle_id)
 { 
@@ -163,6 +193,30 @@ void checkDynamicConstraint(Context* context,int particle_id)
         context -> num_dynamic_constraint=context -> num_dynamic_constraint+1;
       }
     }
+  }
+}
+
+//----------------------------------------------------------------
+
+void checkSolidConstraint(Context* context, int particle_id){
+  if (context ->  num_particles == 0) return;
+  if (context -> particles[particle_id].solid_id != -1){
+    int i = context -> particles[particle_id].solid_id;
+    int n = context -> solids[i].partnumb;
+    for(int j = 0; j < n ; j++){
+      if(context -> solids -> solidcomp[j] != particle_id){
+        Vec2 x_ij=soustvec(context -> particles[particle_id].next_pos,context -> particles[context ->  solids -> solidcomp[j]].next_pos);
+        float C= norm(x_ij)-(context -> solids[i].distance);
+        if (C<0){
+          context -> solid_constraint[context -> num_solid_constraint].contact_id=j;
+          context -> solid_constraint[context -> num_solid_constraint].particle_id=particle_id;
+          context -> solid_constraint[context -> num_solid_constraint].C=C;
+          context -> solid_constraint[context -> num_solid_constraint].norm= x_ij;
+          context -> num_solid_constraint = context -> num_solid_constraint + 1;
+      }
+      }
+    }
+
   }
 }
 
@@ -233,6 +287,16 @@ void addDynamicContactConstraints(Context* (context))
 
 //----------------------------------------------------------------
 
+void addSolidConstraint(Context* (context))
+{
+  if ((context) -> num_particles == 0) return;
+  for (int i = 0; i<(context) -> num_particles; i++){
+    checkSolidConstraint(context,i);
+  }
+}
+
+//----------------------------------------------------------------
+
 void addStaticContactConstraints(Context* (context))
 {
   if ((context) -> num_particles == 0) return;
@@ -271,6 +335,18 @@ void projectConstraints(Context* (context)) // Calculation and update of particl
     context -> particles[ic_i.particle_id].next_pos=sumvec(part_i.next_pos,delta_i);
   }
   
+// Calculation of constraints due to particles interactions in solids (particles of context) (NON TESTE)
+  SolidConstraint* sc = context -> solid_constraint;
+  for (int i = 0; i<(context) -> num_solid_constraint; i++){
+    SolidConstraint sc_i=sc[i];
+    Particle part_i = context -> particles[sc_i.particle_id];
+    Particle part_j = context -> particles[sc_i.contact_id];
+    float C = sc_i.C;
+    float sigma_i=part_i.inv_mass/(part_i.inv_mass+part_j.inv_mass)*C;
+    Vec2 delta_i=mulscal(-sigma_i/norm(sc_i.norm),sc_i.norm);
+    context -> particles[sc_i.particle_id].next_pos=sumvec(part_i.next_pos,delta_i);
+  }
+
  }
     
 //----------------------------------------------------------------
@@ -296,6 +372,7 @@ void deleteContactConstraints(Context* (context)) // Reset all constraint counte
 {
   context -> num_ground_constraint = 0;
   context -> num_dynamic_constraint = 0;
+  context -> num_solid_constraint = 0;
 }
 
 

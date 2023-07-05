@@ -36,6 +36,13 @@ typedef struct InteractionConstraint // Registration of fundamental data of an i
   float C; // Usefull informations for constraint effect calculation
 } InteractionConstraint;
 
+typedef struct SolidConstraint // Registration of fundamental data of an interaction constraint between particles
+{
+  Vec2 norm; // Normal vector going from one particle to the other
+  int particle_id; // Id of the particle to which the constraint effect will be added
+  int contact_id; // Id of the particle that collide with the particle identify by particle_id
+  float C; // Usefull informations for constraint effect calculation
+} SolidConstraint;
 
 // ------------------------------------------------
 

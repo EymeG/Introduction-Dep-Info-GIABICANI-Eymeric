@@ -16,5 +16,11 @@ typedef struct Particle {
   uint32_t status; // can be used as a bitfield to store additional information
 } Particle;
 
+typedef struct Solid {
+  int* solidcomp; // table of particle's id that are composing the solid
+  float distance; // distance between particles of the solid
+  int partnumb; // number of particles that composed the solid
+} Solid;
+
 // ------------------------------------------------
 
